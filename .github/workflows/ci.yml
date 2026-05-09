@@ -1,0 +1,245 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [created]
+
+jobs:
+  # ── Rust unit tests ───────────────────────────────────────────────────────
+  test-rust:
+    name: Rust unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/mermaid_wrapper
+      - run: cargo test --manifest-path rust/mermaid_wrapper/Cargo.toml
+
+  # ── Build Android .a static libs (Ubuntu + NDK cross-compile) ────────────
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: test-rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/mermaid_wrapper
+      - run: cargo install cargo-ndk --locked
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: android-actions/setup-android@v3
+      - run: |
+          sdkmanager "ndk;27.0.12077973"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn ubrn:generate
+      - name: Build
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            yarn ubrn:android
+          else
+            yarn ubrn:android --release
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: android-libs
+          path: android/src/main/jniLibs/
+          retention-days: 7
+      - name: Upload RN TypeScript bindings (used by publish)
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: ts-bindings-rn
+          path: src/generated/rn/
+          retention-days: 7
+      - name: Upload Android native source (ArielModule.kt, CMakeLists.txt, cpp/)
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: android-native-src
+          path: |
+            android/src/main/java/
+            android/CMakeLists.txt
+            android/cpp-adapter.cpp
+            cpp/
+          retention-days: 7
+
+  # ── Build iOS xcframework (macOS — free on public repos) ─────────────────
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    needs: test-rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/mermaid_wrapper
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn ubrn:generate
+      - name: Build
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            yarn ubrn:ios-ci
+          else
+            yarn ubrn:ios-ci --release
+          fi
+      - name: Add x86_64 simulator slice to xcframework
+        run: |
+          # ubrn only produces arm64-simulator; combine with x86_64 for universal simulator support
+          XCFW=ArielFramework.xcframework
+          ARM64_SIM="$XCFW/ios-arm64-simulator/libmermaid_wrapper.a"
+          X86_SIM_DIR="$XCFW/ios-x86_64-simulator"
+          FAT_DIR="$XCFW/ios-arm64_x86_64-simulator"
+          # Build x86_64 simulator slice (already compiled by rustup target)
+          cargo build --manifest-path rust/mermaid_wrapper/Cargo.toml --target x86_64-apple-ios --release 2>/dev/null || \
+          cargo build --manifest-path rust/mermaid_wrapper/Cargo.toml --target x86_64-apple-ios
+          X86_LIB="rust/mermaid_wrapper/target/x86_64-apple-ios/release/libmermaid_wrapper.a"
+          [ -f "$X86_LIB" ] || X86_LIB="rust/mermaid_wrapper/target/x86_64-apple-ios/debug/libmermaid_wrapper.a"
+          if [ -f "$X86_LIB" ] && [ -f "$ARM64_SIM" ]; then
+            mkdir -p "$FAT_DIR"
+            lipo -create "$ARM64_SIM" "$X86_LIB" -output "$FAT_DIR/libmermaid_wrapper.a"
+            rm -rf "$XCFW/ios-arm64-simulator"
+            # Update Info.plist for fat simulator slice
+            /usr/libexec/PlistBuddy -c "Delete :AvailableLibraries:0" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0 dict" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:BinaryPath string libmermaid_wrapper.a" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:LibraryIdentifier string ios-arm64_x86_64-simulator" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:LibraryPath string libmermaid_wrapper.a" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:SupportedArchitectures array" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:SupportedArchitectures:0 string arm64" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:SupportedArchitectures:1 string x86_64" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:SupportedPlatform string ios" "$XCFW/Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :AvailableLibraries:0:SupportedPlatformVariant string simulator" "$XCFW/Info.plist"
+            echo "Created fat simulator slice (arm64 + x86_64)"
+          else
+            echo "Skipping fat slice — x86_64 lib not found"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: ios-xcframework
+          path: |
+            ios/
+            cpp/
+            ArielFramework.xcframework/
+          retention-days: 7
+
+  # ── Build WASM bundle (Ubuntu) ────────────────────────────────────────────
+  build-web:
+    name: Build Web (WASM)
+    runs-on: ubuntu-latest
+    needs: test-rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            rust/mermaid_wrapper
+            rust_modules/wasm
+      - run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn ubrn:generate
+      - name: Build
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            yarn ubrn:web
+          else
+            yarn ubrn:web-release
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: wasm-bindings
+          path: src/generated/web/
+          retention-days: 7
+
+  # ── Example builds disabled temporarily ──────────────────────────────────
+  # build-example-android, build-example-ios, build-example-web
+  # TODO: re-enable once Android autolinking fixes are verified
+
+  # ── Publish to npm ────────────────────────────────────────────────────────
+  # Runs after all 3 builds. Skipped on pull requests.
+  # push to main  → publishes 0.x.x-dev.N with tag "next"
+  # GitHub release → publishes 0.x.x with tag "latest"
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios, build-web]
+    if: github.event_name == 'push' || github.event_name == 'release'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - name: Download Android libs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-libs
+          path: android/src/main/jniLibs/
+      - name: Download iOS xcframework
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-xcframework
+      - name: Download WASM bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-bindings
+          path: src/generated/web/
+      - name: Download RN TypeScript bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: ts-bindings-rn
+          path: src/generated/rn/
+      - name: Download Android native source (ArielModule.kt, CMakeLists.txt, cpp/)
+        uses: actions/download-artifact@v4
+        with:
+          name: android-native-src
+      - run: yarn prepare
+      - name: Set version and npm tag
+        id: versioning
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            npm version ${{ github.event.release.tag_name }} --no-git-tag-version
+            echo "npm_tag=latest" >> $GITHUB_OUTPUT
+          else
+            BASE=$(node -p "require('./package.json').version")
+            npm version "${BASE}-dev.${{ github.run_number }}" --no-git-tag-version
+            echo "npm_tag=next" >> $GITHUB_OUTPUT
+          fi
+      - name: Publish
+        run: yarn npm publish --access public --tag ${{ steps.versioning.outputs.npm_tag }}
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

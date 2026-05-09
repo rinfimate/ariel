@@ -1,0 +1,16 @@
+[package]
+name = "mermaid_wrapper"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+uniffi = "0.31"
+mermaid-rs-renderer = { git = "https://github.com/rinfimate/mermaid-rs-renderer", branch = "wasm-compat", default-features = false }
+thiserror = "2.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["console"] }
+console_error_panic_hook = "0.1"

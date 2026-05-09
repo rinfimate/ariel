@@ -1,0 +1,6 @@
+# Generated files — do not format (backslash fixes applied by generate-bindings.js)
+src/generated/
+android/generated/
+ios/
+cpp/
+rust_modules/
