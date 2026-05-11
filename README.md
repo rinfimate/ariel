@@ -80,48 +80,133 @@ export default function DiagramView() {
 
 `renderMermaid` is **synchronous** on native — no async overhead after init.
 
+### With themes
+
+> **Web note:** `ArielThemeRegistry` calls `ArielTheme.fromConfig()` in its constructor, which invokes the WASM module. On web you must construct the registry **after** `uniffiInitAsync()` resolves — typically inside a `useEffect`. On native this is not a concern since the module is available synchronously.
+
+Define your theme set once using pre-shipped configs or fully custom values:
+
+```typescript
+import {
+  ArielThemeRegistry,
+  ArielLightTheme,
+  ArielDarkTheme,
+  uniffiInitAsync,
+} from 'react-native-ariel';
+
+// Option 1 — use pre-shipped themes as-is
+const themes = new ArielThemeRegistry({ light: ArielLightTheme, dark: ArielDarkTheme }, 'light');
+
+// Option 2 — extend a pre-shipped theme
+const themes = new ArielThemeRegistry({
+  light: ArielLightTheme,
+  dark: { ...ArielDarkTheme, fontFamily: 'MyFont' },
+});
+
+// Option 3 — fully custom
+const themes = new ArielThemeRegistry({
+  brand: { nodeColor: '#7C3AED', arrowColor: '#A78BFA', textColor: '#F5F3FF', background: '#1E1B4B' },
+});
+```
+
+Switching and rendering:
+
+```typescript
+useEffect(() => {
+  async function run() {
+    await uniffiInitAsync();
+    themes.applyTheme('dark');
+    setSvg(themes.render('flowchart TD\n  A --> B'));
+  }
+  run();
+}, []);
+```
+
 ### With theme and layout control
 
 ```typescript
-import { renderMermaidWithOptions, uniffiInitAsync, ArielTheme } from 'react-native-ariel';
+import { ArielThemeRegistry, ArielLightTheme, ArielDarkTheme, renderMermaidWithOptions, uniffiInitAsync } from 'react-native-ariel';
 
-// Inside an async function or useEffect:
-const config = { nodeSpacing: 50, rankSpacing: 80 };
-await uniffiInitAsync();
-const svg = renderMermaidWithOptions(diagram, ArielTheme.modern(), config);
-// or: ArielTheme.mermaidDefault()
+const themes = new ArielThemeRegistry({ light: ArielLightTheme, dark: ArielDarkTheme }, 'light');
+
+useEffect(() => {
+  async function run() {
+    await uniffiInitAsync();
+    const svg = renderMermaidWithOptions(diagram, themes.currentTheme, { nodeSpacing: 50, rankSpacing: 80 });
+    setSvg(svg);
+  }
+  run();
+}, []);
 ```
 
 ### With timing metrics
 
 ```typescript
-import { renderMermaidWithTiming, uniffiInitAsync, ArielTheme } from 'react-native-ariel';
+import { ArielThemeRegistry, ArielDarkTheme, uniffiInitAsync } from 'react-native-ariel';
 
-// Inside an async function or useEffect:
-const config = { nodeSpacing: 50, rankSpacing: 80 };
-await uniffiInitAsync();
-const result = renderMermaidWithTiming(diagram, ArielTheme.modern(), config);
-console.log(`Total: ${result.totalMs.toFixed(2)}ms`);
-// parseUs / layoutUs / renderUs are bigint (µs); totalMs is number (ms)
+const themes = new ArielThemeRegistry({ dark: ArielDarkTheme }, 'dark');
+
+useEffect(() => {
+  async function run() {
+    await uniffiInitAsync();
+    const result = themes.renderWithTiming(diagram, { nodeSpacing: 50 });
+    console.log(`Total: ${result.totalMs.toFixed(2)}ms`);
+    // parseUs / layoutUs / renderUs are bigint (µs); totalMs is number (ms)
+    // On web, timing values are always 0 — the SVG is still correctly themed
+  }
+  run();
+}, []);
+```
+
+### React hook — auto dark/light
+
+```typescript
+import { ArielThemeRegistry, ArielLightTheme, ArielDarkTheme, useArielTheme, renderMermaidWithOptions } from 'react-native-ariel';
+
+const themes = new ArielThemeRegistry({ light: ArielLightTheme, dark: ArielDarkTheme }, 'light');
+
+export default function DiagramView({ input }: { input: string }) {
+  // Automatically picks 'dark' or 'light' from the registry based on system color scheme
+  const theme = useArielTheme(themes);
+  const [svg, setSvg] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function run() {
+      await uniffiInitAsync();
+      setSvg(renderMermaidWithOptions(input, theme, {}));
+    }
+    run();
+  }, [input, theme]);
+
+  return <View>{svg && <SvgXml xml={svg} width="100%" />}</View>;
+}
 ```
 
 ### Full pipeline (parse once, render with multiple themes)
 
 ```typescript
 import {
+  ArielThemeRegistry,
+  ArielLightTheme,
+  ArielDarkTheme,
   parseDiagram,
   computeDiagramLayout,
   renderSvgFromLayout,
   uniffiInitAsync,
-  ArielTheme,
 } from 'react-native-ariel';
 
-// Inside an async function or useEffect:
-const config = { nodeSpacing: 50, rankSpacing: 80 };
-await uniffiInitAsync();
-const parsed = parseDiagram('flowchart LR\n  A --> B --> C');
-const layout = computeDiagramLayout(parsed, ArielTheme.modern(), config);
-const svg    = renderSvgFromLayout(layout, ArielTheme.modern(), config);
+const themes = new ArielThemeRegistry({ light: ArielLightTheme, dark: ArielDarkTheme }, 'light');
+
+useEffect(() => {
+  async function run() {
+    await uniffiInitAsync();
+    const config = { nodeSpacing: 50, rankSpacing: 80 };
+    const parsed = parseDiagram('flowchart LR\n  A --> B --> C');
+    const layout = computeDiagramLayout(parsed, themes.currentTheme, config);
+    setSvg(renderSvgFromLayout(layout, themes.currentTheme, config));
+  }
+  run();
+}, []);
 ```
 
 ### Debug timing logs
@@ -130,7 +215,7 @@ const svg    = renderSvgFromLayout(layout, ArielTheme.modern(), config);
 import { setTimingLogs } from 'react-native-ariel';
 
 setTimingLogs(true); // off by default
-// → [Ariel] flowchart TD… | total 1.23ms  parse 420µs  layout 610µs  render 200µs
+// → [ariel] flowchart TD… | total 1.23ms  parse 420µs  layout 610µs  render 200µs
 ```
 
 Logs are written to **Android Logcat**, the **Xcode console** on iOS, and the **browser DevTools console** on web (WASM timings are always zero).
@@ -141,38 +226,140 @@ Logs are written to **Android Logcat**, the **Xcode console** on iOS, and the **
 
 ## API
 
-| Function | Description |
+| Function / Class | Description |
 |---|---|
-| `renderMermaid(input)` | Render to SVG with default options |
-| `renderMermaidWithOptions(input, theme, config)` | Render with theme and layout control |
+| `renderMermaid(input)` | Render to SVG with default theme |
+| `renderMermaidWithOptions(input, theme, config)` | Render with explicit theme and layout control |
 | `renderMermaidWithTiming(input, theme, config)` | Render and return SVG + timing metrics |
 | `parseDiagram(input)` | Parse only — returns opaque `ArielParsedDiagram` |
 | `computeDiagramLayout(parsed, theme, config)` | Layout stage — returns opaque `ArielLayout` |
 | `renderSvgFromLayout(layout, theme, config)` | SVG stage from pre-computed layout |
 | `setTimingLogs(enabled)` | Toggle timing output to console (default: off) |
 | `uniffiInitAsync()` | Load WASM module on web; no-op on native. Call once before rendering |
-| `ArielTheme.modern()` | Modern theme — see below |
-| `ArielTheme.mermaidDefault()` | Classic Mermaid theme — see below |
+| `ArielTheme.modern()` | Built-in modern theme |
+| `ArielTheme.mermaidDefault()` | Built-in classic Mermaid theme |
+| `ArielTheme.fromConfig(config)` | Create a theme from a partial `ArielThemeConfig` object |
+| `ArielLightTheme` | Pre-shipped light theme config (use with registry or `fromConfig`) |
+| `ArielDarkTheme` | Pre-shipped dark theme config (use with registry or `fromConfig`) |
+| `new ArielThemeRegistry(configs, default?)` | Register named themes and manage the active selection |
+| `registry.applyTheme(name)` | Switch the active theme |
+| `registry.getTheme(name?)` | Get a theme by name, or the current theme if omitted |
+| `registry.currentTheme` | The active `ArielThemeLike` handle |
+| `registry.render(input, config?)` | Render using the active theme |
+| `registry.renderWithTiming(input, config?)` | Render with timing using the active theme |
+| `useArielTheme(registry?)` | React hook — auto-picks 'dark' or 'light' from registry based on system color scheme |
 
 ### Themes
 
-Two built-in themes are available. Both are static constructors on `ArielTheme`:
+#### Registry (recommended)
 
-**`ArielTheme.modern()`**
-A clean, contemporary look with high-contrast shapes and softer typography. Good default for light-background UIs. Produces compact, well-spaced diagrams.
-
-```typescript
-const svg = renderMermaidWithOptions(diagram, ArielTheme.modern(), config);
-```
-
-**`ArielTheme.mermaidDefault()`**
-Reproduces the classic mermaid.js appearance — familiar to anyone who has used Mermaid in Markdown or documentation tools. Useful when you need visual parity with existing mermaid.js output.
+Define any number of named themes and switch between them at runtime:
 
 ```typescript
-const svg = renderMermaidWithOptions(diagram, ArielTheme.mermaidDefault(), config);
+import { ArielThemeRegistry } from 'react-native-ariel';
+
+const themes = new ArielThemeRegistry({
+  light: { nodeColor: '#F8FAFC', textColor: '#0F172A', background: '#FFFFFF' },
+  dark:  { nodeColor: '#1E293B', textColor: '#F1F5F9', background: '#0F172A' },
+  ocean: { nodeColor: '#1e3a5f', arrowColor: '#0ea5e9', textColor: '#e0f2fe' },
+}, 'light');
+
+themes.applyTheme('dark');
+const svg = themes.render(diagram);
 ```
 
-> These are the only two themes currently exposed by [mermaid-rs-renderer](https://github.com/1jehuang/mermaid-rs-renderer). Custom theme colours are not yet supported.
+All fields are optional — unset fields fall back to the `modern` preset. See [Theme fields](#theme-fields) for the full reference.
+
+#### Pre-shipped theme configs
+
+Two ready-made `ArielThemeConfig` objects are exported for use with the registry or `fromConfig`:
+
+```typescript
+import { ArielLightTheme, ArielDarkTheme, ArielThemeRegistry } from 'react-native-ariel';
+
+// Use as-is
+const themes = new ArielThemeRegistry({ light: ArielLightTheme, dark: ArielDarkTheme });
+
+// Or spread and override just what you need
+const themes = new ArielThemeRegistry({
+  dark: { ...ArielDarkTheme, fontFamily: 'MyFont' },
+});
+```
+
+#### Built-in opaque presets
+
+For one-off renders without a registry:
+
+```typescript
+import { ArielTheme } from 'react-native-ariel';
+
+ArielTheme.modern()         // clean light theme (default for renderMermaid)
+ArielTheme.mermaidDefault() // classic Mermaid look
+```
+
+**`ArielTheme.modern()`** — a clean, contemporary look. Good default for light-background UIs.
+
+**`ArielTheme.mermaidDefault()`** — reproduces the classic mermaid.js appearance. Useful when you need visual parity with existing mermaid.js output.
+
+---
+
+### Theme fields
+
+All color fields accept any valid CSS color string (`#hex`, `rgb()`, `hsl()`, named colors).
+
+#### Nodes
+
+| Field | Affects |
+|---|---|
+| `nodeColor` | Fill color of all nodes (rectangles, rounded boxes, circles, etc.) |
+| `secondaryColor` | Fill color of secondary / alternate node variants |
+| `tertiaryColor` | Fill color of tertiary node variants |
+
+#### Node border
+
+| Field | Affects |
+|---|---|
+| `nodeBorderColor` | Border stroke of all nodes |
+| `clusterBorder` | Border stroke of subgraph / cluster boxes |
+
+#### Arrows
+
+| Field | Affects |
+|---|---|
+| `arrowColor` | Stroke color of all edges and arrowheads |
+| `edgeLabelBackground` | Background fill behind edge label text |
+
+#### Text
+
+| Field | Affects |
+|---|---|
+| `textColor` | Primary text color inside nodes and on labels |
+
+#### Background
+
+| Field | Affects |
+|---|---|
+| `background` | Canvas background color of the diagram. **Defaults to `transparent` when omitted** — the SVG floats on whatever background the container has. Pass an explicit color (e.g. `'#FFFFFF'`) for a solid canvas. |
+| `clusterBackground` | Fill color inside subgraph / cluster boxes |
+
+#### Sequence diagrams
+
+| Field | Affects |
+|---|---|
+| `sequenceActorFill` | Fill color of actor boxes |
+| `sequenceActorBorder` | Border color of actor boxes |
+| `sequenceActorLine` | Color of the vertical lifeline |
+| `sequenceNoteFill` | Fill color of note boxes |
+| `sequenceNoteBorder` | Border color of note boxes |
+| `sequenceActivationFill` | Fill color of activation bars |
+| `sequenceActivationBorder` | Border color of activation bars |
+
+#### Typography
+
+| Field | Type | Affects |
+|---|---|---|
+| `fontFamily` | `string` | CSS font stack for all text. Rendered with fonts available on the device — bundle the font in your app to guarantee a specific typeface. |
+| `fontSize` | `number` | Base font size in px |
 
 ### Error handling
 

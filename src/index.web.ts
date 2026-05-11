@@ -24,3 +24,7 @@ export default {
   mermaid_wrapper,
 };
 
+
+export { useArielTheme } from './useArielTheme.web';
+export { ArielThemeRegistry } from './ArielThemeRegistry.web';
+export { ArielLightTheme, ArielDarkTheme } from './themes';

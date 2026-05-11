@@ -38,7 +38,7 @@ const generatedDir = path.join(root, 'cpp', 'generated');
 ['mermaid_wrapper.cpp', 'mermaid_wrapper.hpp'].forEach(file => {
   const dest = path.join(generatedDir, file);
   const src  = path.join(root, 'cpp', file);
-  if (!fs.existsSync(dest) && fs.existsSync(src)) {
+  if (fs.existsSync(src)) {
     fs.mkdirSync(generatedDir, { recursive: true });
     fs.copyFileSync(src, dest);
     console.log(`[ariel] Copied cpp/${file} → cpp/generated/${file}`);
@@ -255,6 +255,50 @@ if (fs.existsSync(wasmCargo)) {
   // Convert any remaining backslash paths to forward slashes
   cargo = cargo.replace(/path = "([^"]+)"/g, (_, p) => `path = "${p.replace(/\\/g, '/')}"`);
   fs.writeFileSync(wasmCargo, cargo, 'utf8');
+}
+
+// ── Append custom JS-layer exports to index.web.ts ───────────────────────────
+// ubrn regenerates this file and wipes any manual additions, so we re-append
+// them here every time codegen runs.
+if (fs.existsSync(webIndex)) {
+  let src = fs.readFileSync(webIndex, 'utf8');
+  const customExports = [
+    "export { useArielTheme } from './useArielTheme.web';",
+    "export { ArielThemeRegistry } from './ArielThemeRegistry.web';",
+    "export { ArielLightTheme, ArielDarkTheme } from './themes';",
+  ];
+  let changed = false;
+  for (const line of customExports) {
+    if (!src.includes(line)) {
+      src += `\n${line}`;
+      changed = true;
+    }
+  }
+  if (changed) {
+    fs.writeFileSync(webIndex, src, 'utf8');
+    console.log('[ariel] Appended custom exports to src/index.web.ts');
+  }
+}
+
+// Same for src/index.tsx (native)
+if (fs.existsSync(nativeIndex)) {
+  let src = fs.readFileSync(nativeIndex, 'utf8');
+  const customExports = [
+    "export { useArielTheme } from './useArielTheme';",
+    "export { ArielThemeRegistry } from './ArielThemeRegistry';",
+    "export { ArielLightTheme, ArielDarkTheme } from './themes';",
+  ];
+  let changed = false;
+  for (const line of customExports) {
+    if (!src.includes(line)) {
+      src += `\n${line}`;
+      changed = true;
+    }
+  }
+  if (changed) {
+    fs.writeFileSync(nativeIndex, src, 'utf8');
+    console.log('[ariel] Appended custom exports to src/index.tsx');
+  }
 }
 
 console.log('\n[ariel] Done — bindings written to src/generated/rn/, src/generated/web/, and cpp/');

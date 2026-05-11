@@ -1,6 +1,6 @@
 {
   "name": "react-native-ariel",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mermaid diagrams for React Native and React Native Web. No DOM. No WebView. Pure Rust.",
   "main": "./lib/module/index.js",
   "source": "./src/index.tsx",
