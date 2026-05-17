@@ -378,7 +378,7 @@ dependencies = [
 [[package]]
 name = "mermaid-rs-renderer"
 version = "0.2.2"
-source = "git+https://github.com/rinfimate/mermaid-rs-renderer?branch=wasm-compat#61ffffb4e797c6d0f01311efe62c501cb6a5e993"
+source = "git+https://github.com/rinfimate/mermaid-rs-renderer?branch=ariel#546f633f1edeabe9adc635e21153d42cf5b62dec"
 dependencies = [
  "anyhow",
  "fontdb",
