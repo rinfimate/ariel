@@ -1,6 +1,6 @@
 {
-  "name": "react-native-ariel",
-  "version": "0.4.0",
+  "name": "react-native-ariel-rs",
+  "version": "0.5.0",
   "description": "Mermaid diagrams for React Native and React Native Web. No DOM. No WebView. Pure Rust.",
   "main": "./lib/module/index.js",
   "source": "./src/index.tsx",
@@ -20,7 +20,7 @@
     "android",
     "ios",
     "cpp",
-    "ArielFramework.xcframework",
+    "ArielRsFramework.xcframework",
     "*.podspec",
     "react-native.config.js",
     "!ios/build",
@@ -66,14 +66,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rinfimate/ariel.git"
+    "url": "git+https://github.com/rinfimate/react-native-ariel-rs.git"
   },
   "author": "Rochanglien Infimate <r.infimate@gmail.com> (https://github.com/rinfimate)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/rinfimate/ariel/issues"
+    "url": "https://github.com/rinfimate/react-native-ariel-rs/issues"
   },
-  "homepage": "https://github.com/rinfimate/ariel#readme",
+  "homepage": "https://github.com/rinfimate/react-native-ariel-rs#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -137,7 +137,10 @@
     },
     "modulePathIgnorePatterns": [
       "<rootDir>/lib/"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^react-native-ariel-rs$": "<rootDir>/src/index.tsx"
+    }
   },
   "create-react-native-library": {
     "type": "turbo-module",

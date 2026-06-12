@@ -7,8 +7,8 @@ export * from './generated/web/mermaid_wrapper';
 // - export them as namespaced objects as the default export.
 import * as mermaid_wrapper from './generated/web/mermaid_wrapper';
 
-import initAsync from './generated/web/wasm-bindgen/react_native_ariel.js';
-import wasmPath from './generated/web/wasm-bindgen/react_native_ariel_bg.wasm';
+import initAsync from './generated/web/wasm-bindgen/react_native_ariel_rs.js';
+import wasmPath from './generated/web/wasm-bindgen/react_native_ariel_rs_bg.wasm';
 
 export async function uniffiInitAsync() {
   await initAsync({ module_or_path: wasmPath })
@@ -26,5 +26,3 @@ export default {
 
 
 export { useArielTheme } from './useArielTheme.web';
-export { ArielThemeRegistry } from './ArielThemeRegistry.web';
-export { ArielLightTheme, ArielDarkTheme } from './themes';

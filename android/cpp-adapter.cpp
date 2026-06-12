@@ -2,23 +2,23 @@
 #include <jni.h>
 #include <jsi/jsi.h>
 #include <ReactCommon/CallInvokerHolder.h>
-#include "react-native-ariel.h"
+#include "react-native-ariel-rs.h"
 
 namespace jsi = facebook::jsi;
 namespace react = facebook::react;
 
-// Automated testing checks Java_com_ariel_ArielModule and ariel
+// Automated testing checks Java_com_ariel_ArielRsModule and arielrs
 // by comparing the whole line here.
 /*
-Java_com_ariel_ArielModule_nativeMultiply(JNIEnv *env, jclass type, jdouble a, jdouble b) {
-    return ariel::multiply(a, b);
+Java_com_ariel_ArielRsModule_nativeMultiply(JNIEnv *env, jclass type, jdouble a, jdouble b) {
+    return arielrs::multiply(a, b);
 }
 */
 
-// Installer coming from ArielModule
+// Installer coming from ArielRsModule
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_ariel_ArielModule_nativeInstallRustCrate(
+Java_com_ariel_ArielRsModule_nativeInstallRustCrate(
     JNIEnv *env,
     jclass type,
     jlong rtPtr,
@@ -32,12 +32,12 @@ Java_com_ariel_ArielModule_nativeInstallRustCrate(
     auto jsCallInvoker = holderCxx->getCallInvoker();
     auto runtime = reinterpret_cast<jsi::Runtime *>(rtPtr);
 
-    return ariel::installRustCrate(*runtime, jsCallInvoker);
+    return arielrs::installRustCrate(*runtime, jsCallInvoker);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_ariel_ArielModule_nativeCleanupRustCrate(JNIEnv *env, jclass type, jlong rtPtr) {
+Java_com_ariel_ArielRsModule_nativeCleanupRustCrate(JNIEnv *env, jclass type, jlong rtPtr) {
     auto runtime = reinterpret_cast<jsi::Runtime *>(rtPtr);
-    return ariel::cleanupRustCrate(*runtime);
+    return arielrs::cleanupRustCrate(*runtime);
 }

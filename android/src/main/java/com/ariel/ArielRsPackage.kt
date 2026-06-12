@@ -8,10 +8,10 @@ import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 import java.util.HashMap
 
-class ArielPackage : TurboReactPackage() {
+class ArielRsPackage : TurboReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
-    return if (name == ArielModule.NAME) {
-      ArielModule(reactContext)
+    return if (name == ArielRsModule.NAME) {
+      ArielRsModule(reactContext)
     } else {
       null
     }
@@ -20,9 +20,9 @@ class ArielPackage : TurboReactPackage() {
   override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
     return ReactModuleInfoProvider {
       val moduleInfos: MutableMap<String, ReactModuleInfo> = HashMap()
-      moduleInfos[ArielModule.NAME] = ReactModuleInfo(
-        ArielModule.NAME,
-        ArielModule.NAME,
+      moduleInfos[ArielRsModule.NAME] = ReactModuleInfo(
+        ArielRsModule.NAME,
+        ArielRsModule.NAME,
         false,  // canOverrideExistingModule
         false,  // needsEagerInit
         false,  // isCxxModule

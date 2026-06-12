@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const file = path.join(__dirname, '..', 'src', 'generated', 'web', 'wasm-bindgen', 'react_native_ariel.js');
+const file = path.join(__dirname, '..', 'src', 'generated', 'web', 'wasm-bindgen', 'react_native_ariel_rs.js');
 
 if (!fs.existsSync(file)) {
   console.error('[ariel] patch-wasm: file not found:', file);

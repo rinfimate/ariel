@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-ariel": ["./src/index.tsx"]
+      "react-native-ariel-rs": ["./src/index.tsx"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,

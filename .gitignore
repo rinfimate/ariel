@@ -89,7 +89,7 @@ cpp/
 /ios/
 android/CMakeLists.txt
 src/generated/
-ArielFramework.xcframework/
+ArielRsFramework.xcframework/
 
 # Rust build artifacts inside the library
 rust/mermaid_wrapper/target/

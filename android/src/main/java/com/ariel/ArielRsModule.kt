@@ -5,16 +5,16 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.turbomodule.core.interfaces.CallInvokerHolder
 
-@ReactModule(name = ArielModule.NAME)
-class ArielModule(reactContext: ReactApplicationContext) :
-  NativeArielSpec(reactContext) {
+@ReactModule(name = ArielRsModule.NAME)
+class ArielRsModule(reactContext: ReactApplicationContext) :
+  NativeArielRsSpec(reactContext) {
 
   override fun getName(): String {
     return NAME
   }
 
   // Two native methods implemented in cpp-adapter.cpp, and ultimately
-  // react-native-ariel.cpp
+  // react-native-ariel-rs.cpp
 
   external fun nativeInstallRustCrate(runtimePointer: Long, callInvoker: CallInvokerHolder): Boolean
   external fun nativeCleanupRustCrate(runtimePointer: Long): Boolean
@@ -44,10 +44,10 @@ class ArielModule(reactContext: ReactApplicationContext) :
   }
 
   companion object {
-    const val NAME = "Ariel"
+    const val NAME = "ArielRs"
 
     init {
-      System.loadLibrary("react-native-ariel")
+      System.loadLibrary("react-native-ariel-rs")
     }
   }
 }

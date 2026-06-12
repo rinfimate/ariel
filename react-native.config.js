@@ -6,7 +6,7 @@ module.exports = {
     platforms: {
       android: {
         cmakeListsPath: 'generated/jni/CMakeLists.txt',
-        cxxModuleCMakeListsModuleName: 'react-native-ariel',
+        cxxModuleCMakeListsModuleName: 'react-native-ariel-rs',
         cxxModuleCMakeListsPath: 'CMakeLists.txt',
       },
     },

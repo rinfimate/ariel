@@ -6965,9 +6965,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-ariel@workspace:.":
+"react-native-ariel-rs@workspace:.":
   version: 0.0.0-use.local
-  resolution: "react-native-ariel@workspace:."
+  resolution: "react-native-ariel-rs@workspace:."
   dependencies:
     "@jest/globals": "npm:^30.0.0"
     "@react-native-community/cli": "npm:20.1.0"

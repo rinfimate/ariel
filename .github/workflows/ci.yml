@@ -69,7 +69,7 @@ jobs:
           name: ts-bindings-rn
           path: src/generated/rn/
           retention-days: 7
-      - name: Upload Android native source (ArielModule.kt, CMakeLists.txt, cpp/)
+      - name: Upload Android native source (ArielRsModule.kt, CMakeLists.txt, cpp/)
         uses: actions/upload-artifact@v4
         with:
           overwrite: true
@@ -110,7 +110,7 @@ jobs:
       - name: Add x86_64 simulator slice to xcframework
         run: |
           # ubrn only produces arm64-simulator; combine with x86_64 for universal simulator support
-          XCFW=ArielFramework.xcframework
+          XCFW=ArielRsFramework.xcframework
           ARM64_SIM="$XCFW/ios-arm64-simulator/libmermaid_wrapper.a"
           X86_SIM_DIR="$XCFW/ios-x86_64-simulator"
           FAT_DIR="$XCFW/ios-arm64_x86_64-simulator"
@@ -145,7 +145,7 @@ jobs:
           path: |
             ios/
             cpp/
-            ArielFramework.xcframework/
+            ArielRsFramework.xcframework/
           retention-days: 7
 
   # ── Build WASM bundle (Ubuntu) ────────────────────────────────────────────
