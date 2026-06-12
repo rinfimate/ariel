@@ -75,7 +75,8 @@
   },
   "homepage": "https://github.com/rinfimate/react-native-ariel-rs#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@jest/globals": "^30.0.0",
