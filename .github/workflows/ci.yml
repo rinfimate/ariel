@@ -202,6 +202,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
       - run: corepack enable
       - run: yarn install --immutable
       - name: Download Android libs
@@ -240,6 +241,6 @@ jobs:
             echo "npm_tag=next" >> $GITHUB_OUTPUT
           fi
       - name: Publish
-        run: yarn npm publish --access public --tag ${{ steps.versioning.outputs.npm_tag }}
+        run: npm publish --access public --tag ${{ steps.versioning.outputs.npm_tag }}
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
